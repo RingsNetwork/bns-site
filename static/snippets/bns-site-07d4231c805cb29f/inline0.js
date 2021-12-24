@@ -1,0 +1,1 @@
+export function get_provider_js() { let provider = window.ethereum; if (!provider) {throw 'provider not found'}; return provider;}

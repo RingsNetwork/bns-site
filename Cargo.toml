@@ -1,0 +1,48 @@
+[package]
+name = "bns-site"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]# you can check the latest version here: https://crates.io/crates/yewyew = "0.17"
+yew = "0.18.0"
+wasm-bindgen = {version = "0.2.67", features = ["serde-serialize"]}
+libp2p-wasm-ext = "0.21.0"
+js-sys = "0.3.44"
+serde = "1.0"
+serde_json = "1.0"
+console_error_panic_hook = "0.1.6"
+wasm-bindgen-futures = "0.4.17"
+web3 = {version="0.17.0", features = ["wasm", "eip-1193"], default-features = false}
+jsonrpc-core = "18.0.0"
+hex = "0.4.2"
+wee_alloc = "0.4.5"
+futures = "0.3.5"
+
+[dependencies.web-sys]
+version = "0.3.44"
+features = [
+  "MessageEvent",
+  "RtcPeerConnection",
+  "RtcSignalingState",
+  "RtcSdpType",
+  "RtcSessionDescriptionInit",
+  "RtcPeerConnectionIceEvent",
+  "RtcIceCandidate",
+  "RtcDataChannel",
+  "RtcDataChannelEvent",
+  "RtcConfiguration"
+]
+
+
+[profile.dev]
+opt-level = 1               # Use slightly better optimizations.
+overflow-checks = true     # Disable integer overflow checks.
+
+[profile.release]
+opt-level = 3               # Use slightly better optimizations.
+overflow-checks = true     # Disable integer overflow checks.
