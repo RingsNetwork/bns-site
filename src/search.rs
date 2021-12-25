@@ -1,10 +1,4 @@
-
-
-
-
 use yew::prelude::*;
-
-
 
 pub enum MainMsg {}
 
@@ -14,19 +8,19 @@ impl Component for Search {
     type Message = MainMsg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, _link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         return Self {};
     }
 
-    fn update(&mut self, _msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         true
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
         false
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div id="search">
                 <div class="search-area">

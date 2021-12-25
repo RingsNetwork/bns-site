@@ -9,7 +9,7 @@ edition = "2021"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]# you can check the latest version here: https://crates.io/crates/yewyew = "0.17"
-yew = "0.18.0"
+yew = "0.19.0"
 wasm-bindgen = {version = "0.2.67", features = ["serde-serialize"]}
 libp2p-wasm-ext = "0.21.0"
 js-sys = "0.3.44"

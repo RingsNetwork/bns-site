@@ -1,33 +1,8 @@
+use yew::{function_component, html};
 
-
-
-
-use yew::prelude::*;
-
-
-
-pub enum MainMsg {}
-
-pub struct Slides {}
-
-impl Component for Slides {
-    type Message = MainMsg;
-    type Properties = ();
-
-    fn create(_props: Self::Properties, _link: ComponentLink<Self>) -> Self {
-        return Self {};
-    }
-
-    fn update(&mut self, _msg: Self::Message) -> bool {
-        true
-    }
-
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
-        html! {
+#[function_component(Slides)]
+pub fn slides() -> Html {
+    html! {
             <div id="viewport">
               <section>
         <div class="title">
@@ -137,6 +112,5 @@ The domain name solution services of BNS cover not only Web3, IPFS  and blockcha
             </div>
                 </section>
             </div>
-        }
     }
 }

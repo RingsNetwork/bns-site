@@ -1,18 +1,14 @@
 use crate::console_log;
 use crate::log;
 
-
 use serde_json::json;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-
 use web_sys::RtcConfiguration;
 use web_sys::RtcDataChannel;
-use web_sys::{
-    MessageEvent, RtcDataChannelEvent, RtcPeerConnection, RtcPeerConnectionIceEvent,
-};
+use web_sys::{MessageEvent, RtcDataChannelEvent, RtcPeerConnection, RtcPeerConnectionIceEvent};
 use yew::prelude::*;
 
 // ref: https://rustwasm.github.io/wasm-bindgen/examples/webrtc_datachannel.html
@@ -28,7 +24,6 @@ pub enum P2pMsg {
 }
 
 pub struct P2p {
-    pub link: ComponentLink<Self>,
     pub address: Option<Rc<String>>,
 }
 
@@ -102,14 +97,13 @@ impl Component for P2p {
     type Message = P2pMsg;
     type Properties = Web3Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         return Self {
-            link: link,
-            address: props.address,
+            address: ctx.props().address.clone(),
         };
     }
 
-    fn update(&mut self, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             P2pMsg::ConnectChannel => {
                 match &self.address {
@@ -124,14 +118,14 @@ impl Component for P2p {
         }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.address = props.address;
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+        self.address = ctx.props().address.clone();
         false
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div id={"p2p"}><a onclick={self.link.callback(|_| P2pMsg::ConnectChannel)}>{"Connect Channel"}</a></div>
+            <div id={"p2p"}><a onclick={ctx.link().callback(|_| P2pMsg::ConnectChannel)}>{"Connect Channel"}</a></div>
         }
     }
 }

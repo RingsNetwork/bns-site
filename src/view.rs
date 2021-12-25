@@ -4,7 +4,7 @@ use crate::footer::Footer;
 use crate::nav::Nav;
 use crate::search::Search;
 use crate::slides::Slides;
-use std::default::Default;
+use crate::{console_log, log};
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
 use web3::api::Web3;
@@ -30,7 +30,6 @@ pub enum Pages {
 }
 
 pub struct View {
-    pub link: ComponentLink<Self>,
     pub web3: Option<Web3<Eip1193>>,
     pub address: Option<Rc<String>>,
     pub page: Pages,
@@ -40,16 +39,14 @@ impl Component for View {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         match eips::get_provider_js() {
             Ok(Some(p)) => Self {
-                link: link,
                 web3: Some(Web3::new(Eip1193::new(p))),
                 address: None,
                 page: Pages::Index,
             },
             Ok(None) | Err(_) => Self {
-                link: link,
                 web3: None,
                 address: None,
                 page: Pages::Index,
@@ -57,10 +54,10 @@ impl Component for View {
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ConnectWallet => {
-                let link = self.link.clone();
+                let link = ctx.link().clone();
                 match &self.web3 {
                     Some(w) => {
                         let w3 = w.clone();
@@ -68,17 +65,23 @@ impl Component for View {
                             match w3.eth().request_accounts().await {
                                 Ok(s) => {
                                     link.send_message(Msg::UpdateAddr(s[0].to_string()));
+                                    console_log!("Updating address 1");
                                 }
-                                Err(_e) => (),
+                                Err(_e) => {
+                                    console_log!("Failed to fetch address");
+                                }
                             };
                         });
                     }
-                    None => (),
+                    None => {
+                        console_log!("Failed to get eth provider");
+                    }
                 }
                 true
             }
             Msg::UpdateAddr(addr) => {
                 self.address = Some(Rc::new(addr));
+                console_log!("Updating address 2");
                 true
             }
             Msg::SwitchPage(page) => {
@@ -88,11 +91,11 @@ impl Component for View {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
         false
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         // This gives us a component's "`Scope`" which allows us to send messages, etc to the component.
         html! {
             <body>

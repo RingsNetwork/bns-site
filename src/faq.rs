@@ -1,29 +1,8 @@
-use yew::prelude::*;
+use yew::{function_component, html};
 
-
-pub enum FAQMsg {}
-
-pub struct FaqView {
-    pub link: ComponentLink<Self>,
-}
-
-impl Component for FaqView {
-    type Message = FAQMsg;
-    type Properties = ();
-
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        return Self { link: link };
-    }
-    fn update(&mut self, _msg: Self::Message) -> bool {
-        return false;
-    }
-
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        return false;
-    }
-
-    fn view(&self) -> Html {
-        html! {
+#[function_component(FaqView)]
+pub fn faq() -> Html {
+    html! {
             <div id="faq">
                 <section class="faq-item">
                 <p class="q">
@@ -94,6 +73,5 @@ impl Component for FaqView {
                 </p>
                 </section>
             </div>
-        }
     }
 }

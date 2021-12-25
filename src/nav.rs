@@ -1,8 +1,13 @@
-use crate::view::{Msg, NavProps, Pages, View};
-
-use yew::prelude::{html, Component, ComponentLink, ShouldRender};
+use crate::view::{Msg, Pages, View};
+use std::rc::Rc;
+use yew::prelude::*;
 use yew::Html;
 
+#[derive(Properties, PartialEq, Clone)]
+pub struct NavProps {
+    pub address: Option<Rc<String>>,
+    pub page: Pages,
+}
 
 pub enum NavMsg {
     ConnectWallet,
@@ -12,7 +17,6 @@ pub enum NavMsg {
 }
 
 pub struct Nav {
-    pub link: ComponentLink<Self>,
     pub props: NavProps,
 }
 
@@ -20,29 +24,26 @@ impl Component for Nav {
     type Message = NavMsg;
     type Properties = NavProps;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         Self {
-            props: props,
-            link: link,
+            props: ctx.props().clone(),
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> bool {
-        match msg {
-            _ => false,
-        }
+    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
+        true
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.props == props {
-            false
-        } else {
-            self.props = props;
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+        if &self.props != ctx.props() {
+            self.props = ctx.props().clone();
             true
+        } else {
+            false
         }
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         let maybe_addr = match &self.props.address.as_ref() {
             Some(addr) => addr,
             None => "Connect",
@@ -50,7 +51,7 @@ impl Component for Nav {
 
         html! {
             <nav>
-                <a id="logo">
+                <a href="https://bns.org" id="logo">
                     <img id="bns_logo" alt="BNS Logo" src="imgs/BNS-logo.png"/>
                 </a>
                 <ul>
@@ -64,7 +65,7 @@ impl Component for Nav {
                 }
 
                 ><a onclick={
-                    self.link.get_parent().unwrap().clone().downcast::<View>().callback(|_| {
+                    ctx.link().get_parent().unwrap().clone().downcast::<View>().callback(|_| {
                         Msg::SwitchPage(Pages::Index)
                     })
                 }>{"Home"}</a></li>
@@ -78,13 +79,13 @@ impl Component for Nav {
                     }
                 }
                 ><a onclick={
-                    self.link.get_parent().unwrap().clone().downcast::<View>().callback(|_| {
+                    ctx.link().get_parent().unwrap().clone().downcast::<View>().callback(|_| {
                         Msg::SwitchPage(Pages::FAQ)
                     })
                 }>{"FAQ"}</a></li>
                 </ul>
                 <div id="wallet">
-                    <a onclick={self.link.get_parent().unwrap().clone().downcast::<View>().callback(|_| Msg::ConnectWallet)}>{maybe_addr}</a>
+                    <a onclick={ctx.link().get_parent().unwrap().clone().downcast::<View>().callback(|_| Msg::ConnectWallet)}>{maybe_addr}</a>
                 </div>
             </nav>
         }

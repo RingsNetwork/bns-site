@@ -19,12 +19,11 @@ pub mod search;
 pub mod slides;
 pub mod view;
 use wasm_bindgen::prelude::*;
-use yew::App;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
-    App::<view::View>::new().mount_as_body();
+    yew::start_app::<view::View>();
 }
 
 #[wasm_bindgen]
