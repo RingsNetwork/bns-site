@@ -18,6 +18,7 @@ pub mod p2p;
 pub mod search;
 pub mod slides;
 pub mod view;
+pub mod provider;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
