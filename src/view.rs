@@ -39,7 +39,7 @@ impl Component for View {
     type Message = Msg;
     type Properties = ();
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         match eips::get_provider_js() {
             Ok(Some(p)) => Self {
                 web3: Some(Web3::new(Eip1193::new(p))),
@@ -91,11 +91,11 @@ impl Component for View {
         }
     }
 
-    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
         false
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         // This gives us a component's "`Scope`" which allows us to send messages, etc to the component.
         html! {
             <body>
