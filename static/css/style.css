@@ -33,16 +33,10 @@ body {
     scroll-behavior: smooth;
     -ms-overflow-style: none; /* IE 10+ */
     overflow-x: hidden;
-    -moz-user-select: -moz-none;
-    -khtml-user-select: none;
-    -webkit-user-select: none;
-
    /*
      Introduced in IE 10.
      See http://ie.microsoft.com/testdrive/HTML5/msUserSelect/
    */
-    -ms-user-select: none;
-    user-select: none;
     box-sizing: border-box;
 }
 
@@ -107,11 +101,30 @@ nav .selected {
 }
 
 #p2p {
-    display: none;
-    height: 12.5rem;
+    height: 20.5rem;
     background-color: #282c34;
-    margin-top: 6.25rem;
+    margin-top: 5.5rem;
+    padding: 5rem;
     color: #ccc;
+}
+
+#p2p a {
+    padding: 0 1rem;
+    border: 1px;
+    border-style: solid;
+    border-radius: 1rem;
+}
+
+#p2p .text {
+    padding: 1rem;
+    border: 1px;
+    border-style: solid;
+    min-height: 5rem;
+    min-width: 10rem;
+
+    background-color: black;
+    margin: 2rem;
+    cursor: pointer;
 }
 
 #viewport {

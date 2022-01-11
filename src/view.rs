@@ -4,6 +4,7 @@ use crate::footer::Footer;
 use crate::nav::Nav;
 use crate::search::Search;
 use crate::slides::Slides;
+use crate::p2p::P2p;
 use crate::{console_log, log};
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
@@ -100,21 +101,7 @@ impl Component for View {
         html! {
             <body>
                 <Nav address = {self.address.clone()} page={self.page} />
-            {
-                match self.page {
-                    Pages::Index => html! {
-                        <>
-                            <Search />
-                            <Slides />
-                        </>
-                    },
-                    Pages::FAQ => html! {
-                        <>
-                            <FaqView />
-                        </>
-                    },
-                }
-            }
+                <P2p address = {self.address.clone()} />
             <Footer />
             </body>
         }
