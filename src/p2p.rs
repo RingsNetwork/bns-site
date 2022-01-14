@@ -161,6 +161,7 @@ impl Component for P2p {
                 return true;
             },
             P2pMsg::ConnectPeer(offer) => {
+                console_log!("{}", offer.clone());
                 return false;
             },
             P2pMsg::UpdateP2p((channel, sdp, peer)) => {
