@@ -27,13 +27,15 @@ pub enum P2pMsg {
     ConnectChannel,
     UpdatePeer(RtcPeerConnection),
     UpdateOffer(String),
+    UpdateChannel(RtcDataChannel),
     ConnectPeer
 }
 
 pub struct P2p {
     pub address: Option<Rc<String>>,
     pub offer: Option<String>,
-    pub peer: Option<RtcPeerConnection>
+    pub peer: Option<RtcPeerConnection>,
+    pub channel: Option<RtcDataChannel>
 }
 
 impl P2p {
@@ -44,24 +46,30 @@ impl P2p {
         );
         let peer = RtcPeerConnection::new_with_configuration(&config).unwrap();
         console_log!("{:?} created: state {:?}", addr, peer.signaling_state());
-        let channel = peer.create_data_channel("bns-channel");
-
-        let onmessage_callback = Closure::wrap(Self::on_message(channel.clone()));
-        channel.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+        let channel = Self::setup_channel(&peer, "bns").await;
+        link.send_message(P2pMsg::UpdateChannel(channel));
 
         let onopen_callback = Closure::wrap(Self::on_open());
         peer.set_ondatachannel(Some(onopen_callback.as_ref().unchecked_ref()));
-
-        if let Some(offer) = JsFuture::from(peer.create_offer()).await.ok() {
-            let offer_sdp = Reflect::get(&offer, &JsValue::from_str("sdp")).unwrap()
-                .as_string()
-                .unwrap();
-            link.send_message(P2pMsg::UpdateOffer(offer_sdp.clone()));
+        if let Some(sdp) = Self::get_offer(&peer).await {
+            link.send_message(P2pMsg::UpdateOffer(sdp));
         } else {
              console_log!("cannot get offer");
 
         }
-        return peer;
+        return peer.to_owned();
+    }
+
+    pub async fn setup_channel(peer: &RtcPeerConnection, name: &str) -> RtcDataChannel {
+        let channel = peer.create_data_channel(&name);
+        let onmessage_callback = Closure::wrap(Self::on_message(channel.clone()));
+        channel.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+        return channel;
+    }
+
+    pub async fn get_offer(peer: &RtcPeerConnection) -> Option<String> {
+        let offer = JsFuture::from(peer.create_offer()).await.ok()?;
+        return Reflect::get(&offer, &JsValue::from_str("sdp")).ok()?.as_string();
     }
 
     pub async fn dial(self, offer: String) {
@@ -133,7 +141,8 @@ impl Component for P2p {
         return Self {
             address: ctx.props().address.clone(),
             peer: None,
-            offer:None
+            offer:None,
+            channel: None
 
         };
     }
@@ -169,6 +178,10 @@ impl Component for P2p {
             },
             P2pMsg::ConnectPeer => {
                 return false;
+            },
+            P2pMsg::UpdateChannel(channel) => {
+                self.channel = Some(channel);
+                return true;
             }
 
         }
