@@ -11,6 +11,7 @@ use web_sys::RtcConfiguration;
 use web_sys::RtcDataChannel;
 use web_sys::{MessageEvent, RtcDataChannelEvent, RtcPeerConnection, RtcPeerConnectionIceEvent};
 use web_sys::{RtcSdpType, RtcSessionDescriptionInit};
+use web_sys::InputEvent;
 use yew::prelude::*;
 use yew::html::Scope;
 
@@ -26,7 +27,8 @@ pub struct Web3Props {
 pub enum P2pMsg {
     ConnectChannel,
     UpdateP2p((RtcDataChannel, Option<String>, Option<RtcPeerConnection>)),
-    ConnectPeer
+    ConnectPeer(String),
+    None
 }
 
 pub struct P2p {
@@ -158,7 +160,7 @@ impl Component for P2p {
                 }
                 return true;
             },
-            P2pMsg::ConnectPeer => {
+            P2pMsg::ConnectPeer(offer) => {
                 return false;
             },
             P2pMsg::UpdateP2p((channel, sdp, peer)) => {
@@ -166,6 +168,9 @@ impl Component for P2p {
                 self.offer = sdp;
                 self.peer = peer;
                 return true;
+            },
+            P2pMsg::None => {
+                return false;
             }
         }
     }
@@ -185,9 +190,14 @@ impl Component for P2p {
                 _ => ""
             }}
             </div>
-            <a onclick={ctx.link().callback(|_| P2pMsg::ConnectPeer)}>{"Connect Peer"}</a>
-
-           </div>
+                <div>
+                <textarea class="offer"
+                oninput={ctx.link().callback(|event: InputEvent| match event.data() {
+                    Some(d) => P2pMsg::ConnectPeer(d),
+                    _ => P2pMsg::None
+                })}></textarea>
+            </div>
+            </div>
         }
     }
 }
