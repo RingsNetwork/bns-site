@@ -25,9 +25,7 @@ pub struct Web3Props {
 
 pub enum P2pMsg {
     ConnectChannel,
-    UpdatePeer(RtcPeerConnection),
-    UpdateOffer(String),
-    UpdateChannel(RtcDataChannel),
+    UpdateP2p((RtcDataChannel, Option<String>, Option<RtcPeerConnection>)),
     ConnectPeer
 }
 
@@ -39,25 +37,18 @@ pub struct P2p {
 }
 
 impl P2p {
-    pub async fn start(addr: Rc<String>, link: Scope<Self>) -> RtcPeerConnection {
+    pub async fn start(_addr: Rc<String>, link: Scope<Self>) {
         let mut config = RtcConfiguration::new();
         config.ice_servers(
             &JsValue::from_serde(&json! {[{"urls":"stun:stun.l.google.com:19302"}]}).unwrap(),
         );
-        let peer = RtcPeerConnection::new_with_configuration(&config).unwrap();
-        console_log!("{:?} created: state {:?}", addr, peer.signaling_state());
-        let channel = Self::setup_channel(&peer, "bns").await;
-        link.send_message(P2pMsg::UpdateChannel(channel));
-
-        let onopen_callback = Closure::wrap(Self::on_open());
-        peer.set_ondatachannel(Some(onopen_callback.as_ref().unchecked_ref()));
-        if let Some(sdp) = Self::get_offer(&peer).await {
-            link.send_message(P2pMsg::UpdateOffer(sdp));
-        } else {
-             console_log!("cannot get offer");
-
+        if let Ok(peer)  = RtcPeerConnection::new_with_configuration(&config) {
+            let channel = Self::setup_channel(&peer, "bns").await;
+            let sdp = Self::get_offer(&peer).await;
+            let onopen_callback = Closure::wrap(Self::on_open());
+            peer.set_ondatachannel(Some(onopen_callback.as_ref().unchecked_ref()));
+            link.send_message(P2pMsg::UpdateP2p((channel, sdp, Some(peer))));
         }
-        return peer.to_owned();
     }
 
     pub async fn setup_channel(peer: &RtcPeerConnection, name: &str) -> RtcDataChannel {
@@ -157,8 +148,7 @@ impl Component for P2p {
                         let link = ctx.link().clone();
                         spawn_local(
                             async move {
-                                let peer = Self::start(addr.clone(), link.clone()).await;
-                                link.send_message(Self::Message::UpdatePeer(peer));
+                                Self::start(addr.clone(), link.clone()).await;
                             }
                         )
                     }
@@ -168,22 +158,15 @@ impl Component for P2p {
                 }
                 return true;
             },
-            P2pMsg::UpdatePeer(peer) => {
-                self.peer = Some(peer);
-                return true;
-            },
-            P2pMsg::UpdateOffer(offer) => {
-                self.offer = Some(offer);
-                return true;
-            },
             P2pMsg::ConnectPeer => {
                 return false;
             },
-            P2pMsg::UpdateChannel(channel) => {
+            P2pMsg::UpdateP2p((channel, sdp, peer)) => {
                 self.channel = Some(channel);
+                self.offer = sdp;
+                self.peer = peer;
                 return true;
             }
-
         }
     }
 
