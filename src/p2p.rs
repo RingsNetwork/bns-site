@@ -68,14 +68,12 @@ impl P2p {
         return Reflect::get(&offer, &JsValue::from_str("sdp")).ok()?.as_string();
     }
 
-    pub async fn dial(self, offer: String) {
-        if let Some(peer) = self.peer {
-            let mut offer_obj = RtcSessionDescriptionInit::new(RtcSdpType::Offer);
-            offer_obj.sdp(&offer);
-            let srd_promise = peer.set_remote_description(&offer_obj);
-            match JsFuture::from(srd_promise).await {
-                _ => {
-                }
+    pub async fn dial(peer: &RtcPeerConnection, offer: String) {
+        let mut offer_obj = RtcSessionDescriptionInit::new(RtcSdpType::Offer);
+        offer_obj.sdp(&offer);
+        let srd_promise = peer.set_remote_description(&offer_obj);
+        match JsFuture::from(srd_promise).await {
+            _ => {
             }
         }
     }
@@ -164,8 +162,18 @@ impl Component for P2p {
                 return true;
             },
             P2pMsg::ConnectPeer(offer) => {
-                console_log!("{}", offer.clone());
-                return false;
+                if let Some(peer) = &self.peer {
+                    console_log!("Connection to peer {}", offer.clone());
+                    let peer = peer.to_owned();
+                    spawn_local(
+                        async move {
+                            Self::dial(&peer, offer).await;
+                        }
+                    );
+                    return true;
+                } else {
+                    return false;
+                }
             },
             P2pMsg::UpdateP2p((channel, sdp, peer)) => {
                 self.channel = Some(channel);
