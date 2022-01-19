@@ -16,7 +16,11 @@ use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
 use yew::html::Scope;
 use yew::NodeRef;
+use std::any::Any;
+use std::sync::{Arc, Mutex};
 
+
+pub type Callback = Box<dyn FnMut(dyn Any) -> ()>;
 
 // ref: https://rustwasm.github.io/wasm-bindgen/examples/webrtc_datachannel.html
 // ref: https://mac-blog.org.ua/webrtc-one-to-one-without-signaling-server
@@ -28,52 +32,76 @@ pub struct Web3Props {
 
 pub enum P2pMsg {
     ConnectChannel,
-    UpdateP2p((RtcDataChannel, Option<String>, Option<RtcPeerConnection>)),
+    UpdateP2p,
     ConnectPeer(String),
     None
 }
 
-pub struct P2p {
-    pub address: Option<Rc<String>>,
+#[derive(Clone)]
+pub struct IceTransport {
     pub offer: Option<String>,
     pub peer: Option<RtcPeerConnection>,
     pub channel: Option<RtcDataChannel>,
+}
+
+pub struct P2p {
+    pub address: Option<Rc<String>>,
+    pub transport: Arc<Mutex<IceTransport>>,
     pub textarea_ref: NodeRef
 }
 
-impl P2p {
-    pub async fn start(_addr: Rc<String>, link: Scope<Self>) {
+impl IceTransport {
+    pub fn new() -> Self {
         let mut config = RtcConfiguration::new();
         config.ice_servers(
             &JsValue::from_serde(&json! {[{"urls":"stun:stun.l.google.com:19302"}]}).unwrap(),
         );
-        if let Ok(peer)  = RtcPeerConnection::new_with_configuration(&config) {
-            let channel = Self::setup_channel(&peer, "bns").await;
-            let sdp = Self::get_offer(&peer).await;
-            let onopen_callback = Closure::wrap(Self::on_open());
-            peer.set_ondatachannel(Some(onopen_callback.as_ref().unchecked_ref()));
-            link.send_message(P2pMsg::UpdateP2p((channel, sdp, Some(peer))));
+
+        return Self {
+            offer: None,
+            peer: RtcPeerConnection::new_with_configuration(&config).ok(),
+            channel: None
+        };
+        // let onopen_callback = Closure::wrap(Self::on_open());
+
+        // transport.peer.set_ondatachannel(Some(onopen_callback.as_ref().unchecked_ref()));
+        //            link.send_message(P2pMsg::UpdateP2p((channel, sdp, Some(peer))));
+    }
+
+    pub async fn setup(&mut self) {
+        self.setup_channel("bns").await;
+        self.setup_offer().await;
+    }
+
+    pub async fn setup_channel(&mut self, name: &str) -> &Self {
+        if let Some(peer) = &self.peer {
+            let channel = peer.create_data_channel(&name);
+            let onmessage_callback = Closure::wrap(Self::on_message(channel.clone()));
+            channel.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+            self.channel = Some(channel);
         }
+        return self;
     }
 
-    pub async fn setup_channel(peer: &RtcPeerConnection, name: &str) -> RtcDataChannel {
-        let channel = peer.create_data_channel(&name);
-        let onmessage_callback = Closure::wrap(Self::on_message(channel.clone()));
-        channel.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
-        return channel;
+    pub async fn setup_offer(&mut self) -> &Self {
+        if let Some(peer) = &self.peer {
+            if let Ok(offer) = JsFuture::from(peer.create_offer()).await {
+                self.offer = Reflect::get(&offer, &JsValue::from_str("sdp")).ok()
+                    .and_then(|o| o.as_string())
+                    .take();
+            }
+        }
+        return self;
     }
 
-    pub async fn get_offer(peer: &RtcPeerConnection) -> Option<String> {
-        let offer = JsFuture::from(peer.create_offer()).await.ok()?;
-        return Reflect::get(&offer, &JsValue::from_str("sdp")).ok()?.as_string();
-    }
-
-    pub async fn dial(peer: &RtcPeerConnection, offer: String) {
+    pub async fn dial(&self, offer: String) {
         let mut offer_obj = RtcSessionDescriptionInit::new(RtcSdpType::Offer);
         offer_obj.sdp(&offer);
-        let srd_promise = peer.set_remote_description(&offer_obj);
-        match JsFuture::from(srd_promise).await {
-            _ => {
+        if let Some(peer) = &self.peer {
+            let srd_promise = peer.set_remote_description(&offer_obj);
+            match JsFuture::from(srd_promise).await {
+                _ => {
+                }
             }
         }
     }
@@ -132,13 +160,16 @@ impl Component for P2p {
     type Properties = Web3Props;
 
     fn create(ctx: &Context<Self>) -> Self {
-        return Self {
+        let ins = Self {
             address: ctx.props().address.clone(),
-            peer: None,
-            offer:None,
-            channel: None,
+            transport: Arc::new(Mutex::new(IceTransport::new())),
             textarea_ref: NodeRef::default(),
         };
+        let trans = ins.transport.clone();
+        spawn_local(async move {
+            trans.lock().unwrap().setup().await;
+        });
+        return ins;
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -147,11 +178,13 @@ impl Component for P2p {
                 match &self.address {
                     Some(addr) => {
                         console_log!("try start p2p");
-                        let addr = addr.clone();
                         let link = ctx.link().clone();
+                        let trans = Arc::clone(&self.transport);
                         spawn_local(
                             async move {
-                                Self::start(addr.clone(), link.clone()).await;
+                                // should not unwrap here
+                                trans.lock().unwrap().setup().await;
+                                link.send_message(P2pMsg::UpdateP2p);
                             }
                         )
                     }
@@ -162,23 +195,17 @@ impl Component for P2p {
                 return true;
             },
             P2pMsg::ConnectPeer(offer) => {
-                if let Some(peer) = &self.peer {
-                    console_log!("Connection to peer {}", offer.clone());
-                    let peer = peer.to_owned();
-                    spawn_local(
-                        async move {
-                            Self::dial(&peer, offer).await;
-                        }
-                    );
-                    return true;
-                } else {
-                    return false;
-                }
+                console_log!("Connection to peer {}", offer.clone());
+                let trans = self.transport.clone();
+                spawn_local(
+                    async move {
+                        // should not unwrap here
+                        trans.lock().unwrap().dial(offer).await;
+                    }
+                );
+                return true
             },
-            P2pMsg::UpdateP2p((channel, sdp, peer)) => {
-                self.channel = Some(channel);
-                self.offer = sdp;
-                self.peer = peer;
+            P2pMsg::UpdateP2p => {
                 return true;
             },
             P2pMsg::None => {
@@ -197,7 +224,7 @@ impl Component for P2p {
             <div id={"p2p"}>
                 <a onclick={ctx.link().callback(|_| P2pMsg::ConnectChannel)}>{"GET SDP"}</a>
                 <div class="text">
-            { match &self.offer {
+            { match &self.transport.lock().unwrap().offer {
                 Some(o) => o,
                 _ => ""
             }}
