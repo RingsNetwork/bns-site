@@ -12,8 +12,10 @@ use web_sys::RtcDataChannel;
 use web_sys::{MessageEvent, RtcDataChannelEvent, RtcPeerConnection, RtcPeerConnectionIceEvent};
 use web_sys::{RtcSdpType, RtcSessionDescriptionInit};
 use web_sys::InputEvent;
+use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
 use yew::html::Scope;
+use yew::NodeRef;
 
 
 // ref: https://rustwasm.github.io/wasm-bindgen/examples/webrtc_datachannel.html
@@ -35,7 +37,8 @@ pub struct P2p {
     pub address: Option<Rc<String>>,
     pub offer: Option<String>,
     pub peer: Option<RtcPeerConnection>,
-    pub channel: Option<RtcDataChannel>
+    pub channel: Option<RtcDataChannel>,
+    pub textarea_ref: NodeRef
 }
 
 impl P2p {
@@ -135,8 +138,8 @@ impl Component for P2p {
             address: ctx.props().address.clone(),
             peer: None,
             offer:None,
-            channel: None
-
+            channel: None,
+            textarea_ref: NodeRef::default(),
         };
     }
 
@@ -184,19 +187,23 @@ impl Component for P2p {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div id={"p2p"}>
-                <a onclick={ctx.link().callback(|_| P2pMsg::ConnectChannel)}>{"Connect Channel"}</a>
+                <a onclick={ctx.link().callback(|_| P2pMsg::ConnectChannel)}>{"GET SDP"}</a>
                 <div class="text">
             { match &self.offer {
                 Some(o) => o,
                 _ => ""
             }}
             </div>
-                <div>
-                <textarea class="offer"
-                oninput={ctx.link().callback(|event: InputEvent| match event.data() {
-                    Some(d) => P2pMsg::ConnectPeer(d),
-                    _ => P2pMsg::None
-                })}></textarea>
+            <div>
+                <textarea ref={self.textarea_ref.clone()}></textarea>
+                <a onclick={
+                    let text = self.textarea_ref.clone();
+                    ctx.link().callback(move |_| {
+                    match text.cast::<HtmlTextAreaElement>() {
+                        Some(t) => P2pMsg::ConnectPeer(t.value()),
+                        None => P2pMsg::None
+                    }
+                })}>{"Connect"}</a>
             </div>
             </div>
         }
