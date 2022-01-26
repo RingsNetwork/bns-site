@@ -11,7 +11,6 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]# you can check the latest version here: https://crates.io/crates/yewyew = "0.17"
 yew = "0.19.0"
 wasm-bindgen = {version = "0.2.67", features = ["serde-serialize"]}
-libp2p-wasm-ext = "0.21.0"
 js-sys = "0.3.44"
 serde = "1.0"
 serde_json = "1.0"
@@ -23,6 +22,13 @@ hex = "0.4.2"
 wee_alloc = "0.4.5"
 futures = "0.3.5"
 anyhow = "1.0.52"
+
+[dependencies.bns-core]
+path="../bns-node/bns-core"
+default-features = false
+features = ["wasm"]
+
+
 
 [dependencies.web-sys]
 version = "0.3.44"
