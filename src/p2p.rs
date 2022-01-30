@@ -1,6 +1,7 @@
 use log::info;
 use bns_core::types::ice_transport::IceTransport;
 use bns_core::types::ice_transport::IceTransportCallback;
+use bns_core::encoder::{encode, decode};
 use bns_core::types::channel::Channel;
 use bns_core::channels::wasm::CbChannel;
 use bns_core::transports::wasm::WasmTransport;
@@ -186,6 +187,7 @@ impl Component for P2p {
             P2pMsg::ConnectPeer(offer) => {
                 info!("Connection to peer {}", offer.clone());
                 let trans = self.transport.clone();
+                let offer = decode(offer).unwrap();
                 spawn_local(
                     async move {
                         // should not unwrap here
@@ -216,7 +218,7 @@ impl Component for P2p {
                 <pre class="text">
             { match &self.transport.lock().unwrap().offer {
                 Some(o) => {
-                    let sdp = o.sdp();
+                    let sdp = encode(o.sdp());
                     info!("{:?}", &sdp);
                     sdp
                 },
