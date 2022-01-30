@@ -1,8 +1,10 @@
-use crate::console_log;
-use crate::log;
+use log::info;
 use bns_core::types::ice_transport::IceTransport;
-use bns_core::types::ice_transport::IceTransportBuilder;
+use bns_core::types::ice_transport::IceTransportCallback;
+use bns_core::types::channel::Channel;
+use bns_core::channels::wasm::CbChannel;
 use bns_core::transports::wasm::WasmTransport;
+use bns_core::transports::wasm::SdpOfferStr;
 use js_sys::Reflect;
 use serde_json::json;
 use std::rc::Rc;
@@ -12,8 +14,6 @@ use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::RtcConfiguration;
 use web_sys::RtcDataChannel;
-use web_sys::{MessageEvent, RtcDataChannelEvent, RtcPeerConnection, RtcPeerConnectionIceEvent};
-use web_sys::{RtcSdpType, RtcSessionDescriptionInit};
 use web_sys::InputEvent;
 use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
@@ -103,7 +103,7 @@ pub struct P2p {
 //     pub fn on_message(channel: RtcDataChannel) -> Box<dyn FnMut(MessageEvent)> {
 //         box move |ev: MessageEvent| match ev.data().as_string() {
 //             Some(message) => {
-//                 console_log!("{:?}", message);
+//                 info!("{:?}", message);
 //                 channel.send_with_str("Pong from pc1.dc!").unwrap();
 //             }
 //             None => {}
@@ -113,7 +113,7 @@ pub struct P2p {
 //     pub fn on_channel() -> Box<dyn FnMut(RtcDataChannelEvent)> {
 //         box move |ev: RtcDataChannelEvent| {
 //             let cnn = ev.channel();
-//             console_log!("onDataChannelEvent!");
+//             info!("onDataChannelEvent!");
 //             match cnn.send_with_str("Greeting!") {
 //                 Ok(_d) => {}
 //                 Err(_e) => {
@@ -125,7 +125,7 @@ pub struct P2p {
 
 //     pub fn on_open() -> Box<dyn FnMut(RtcDataChannelEvent)> {
 //         box move |ev: RtcDataChannelEvent| {
-//             console_log!("channel Open!");
+//             info!("channel Open!");
 //             let cnn = ev.channel();
 //             match cnn.send_with_str("Greeting!") {
 //                 Ok(_d) => {}
@@ -138,10 +138,10 @@ pub struct P2p {
 
 //     pub fn on_icecandidate() -> Box<dyn FnMut(RtcPeerConnectionIceEvent)> {
 //         box move |ev: RtcPeerConnectionIceEvent| {
-//             console_log!("ice candidate");
+//             info!("ice candidate");
 //             match ev.candidate() {
 //                 Some(candidate) => {
-//                     console_log!("onicecandiate: {:#?}", candidate.candidate());
+//                     info!("onicecandiate: {:#?}", candidate.candidate());
 //                 }
 //                 None => {}
 //             }
@@ -156,7 +156,7 @@ impl Component for P2p {
     fn create(ctx: &Context<Self>) -> Self {
         Self {
             address: ctx.props().address.clone(),
-            transport: Arc::new(Mutex::new(WasmTransport::new())),
+            transport: Arc::new(Mutex::new(WasmTransport::new(CbChannel::new(1)))),
             textarea_ref: NodeRef::default(),
         }
     }
@@ -165,31 +165,32 @@ impl Component for P2p {
         match msg {
             P2pMsg::ConnectChannel => {
                 match &self.address {
-                    Some(addr) => {
-                        console_log!("try start p2p");
+                    Some(_addr) => {
                         let link = ctx.link().clone();
                         let trans = Arc::clone(&self.transport);
                         spawn_local(
                             async move {
                                 // should not unwrap here
-                                trans.lock().unwrap().start().await;
+                                info!("try start trans");
+                                trans.lock().unwrap().start().await.unwrap();
                                 link.send_message(P2pMsg::UpdateP2p);
                             }
                         )
                     }
                     None => {
-                         console_log!("cant get addr");
+                         info!("cant get addr");
                     }
                 }
                 return true;
             },
             P2pMsg::ConnectPeer(offer) => {
-                console_log!("Connection to peer {}", offer.clone());
+                info!("Connection to peer {}", offer.clone());
                 let trans = self.transport.clone();
                 spawn_local(
                     async move {
                         // should not unwrap here
-                        trans.lock().unwrap().set_remote_description(JsValue::from(offer)).await;
+                        info!("set remote desc");
+                        trans.lock().unwrap().set_remote_description(SdpOfferStr::new(offer)).await.unwrap();
                     }
                 );
                 return true
@@ -212,12 +213,16 @@ impl Component for P2p {
         html! {
             <div id={"p2p"}>
                 <a onclick={ctx.link().callback(|_| P2pMsg::ConnectChannel)}>{"GET SDP"}</a>
-                <div class="text">
+                <pre class="text">
             { match &self.transport.lock().unwrap().offer {
-                Some(o) => o.sdp(),
+                Some(o) => {
+                    let sdp = o.sdp();
+                    info!("{:?}", &sdp);
+                    sdp
+                },
                 _ => "".to_string()
             }}
-            </div>
+            </pre>
             <div>
                 <textarea ref={self.textarea_ref.clone()}></textarea>
                 <a onclick={

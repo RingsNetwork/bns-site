@@ -20,10 +20,12 @@ pub mod slides;
 pub mod view;
 pub mod provider;
 use wasm_bindgen::prelude::*;
+use log::Level;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
+    console_log::init_with_level(Level::Debug).expect("error initializing log");
     yew::start_app::<view::View>();
 }
 
